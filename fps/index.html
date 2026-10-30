@@ -154,55 +154,140 @@
       box-shadow: 0 0 4px rgba(0,0,0,0.8);
     }
 
-    /* HUD Bar (Bottom) */
-    #hud {
+    /* Top Right Quick Action Bar (Nhỏ, gọn, không choán màn hình) */
+    #top-quick-bar {
       position: absolute;
-      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-      left: 50%;
-      transform: translateX(-50%);
+      top: calc(10px + env(safe-area-inset-top, 0px));
+      right: calc(10px + env(safe-area-inset-right, 0px));
       display: flex;
-      gap: 8px;
-      z-index: 60;
+      align-items: center;
+      gap: 6px;
+      z-index: 65;
+      pointer-events: auto;
+    }
+    .quick-btn {
       background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(10px);
-      padding: 8px calc(16px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
-      border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      max-width: 95vw;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    @media (max-width: 768px) {
-      #hud {
-        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-        padding: 5px calc(10px + env(safe-area-inset-right, 0px)) 5px calc(10px + env(safe-area-inset-left, 0px));
-        gap: 6px;
-      }
-      .hud-btn {
-        padding: 5px 10px !important;
-        font-size: 11px !important;
-        white-space: nowrap;
-      }
-      .card {
-        padding: 24px 20px !important;
-        max-width: 90vw !important;
-      }
-    }
-    .hud-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #e2e8f0;
-      padding: 6px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f1f5f9;
+      padding: 6px 11px;
       border-radius: 20px;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.2s, color 0.2s;
-    }
-    .hud-btn:hover {
-      background: #38bdf8;
-      color: #0f172a;
+      font-size: 11.5px;
       font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .quick-btn:active {
+      transform: scale(0.95);
+    }
+    .quick-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+    }
+
+    /* Collapsible Side Drawer (Bên hông phải) */
+    #side-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      height: 100dvh;
+      width: 220px;
+      max-width: 80vw;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 85;
+      padding: calc(14px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6);
+      overflow-y: auto;
+      pointer-events: auto;
+    }
+    #side-drawer.open {
+      transform: translateX(0);
+    }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .drawer-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .drawer-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #94a3b8;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .drawer-section-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .drawer-btn-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .drawer-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f1f5f9;
+      padding: 7px 11px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .drawer-btn:active, .drawer-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    /* Backdrop when drawer is open */
+    #drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 80;
+      display: none;
+    }
+    #drawer-backdrop.show {
+      display: block;
     }
 
     /* Mobile Touch Controls */
@@ -257,22 +342,6 @@
       transform: translate(-50%, -50%);
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
       pointer-events: none;
-    }
-    #mobile-menu-btn {
-      position: absolute;
-      top: 18px;
-      left: 18px;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-      padding: 7px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      z-index: 70;
-      pointer-events: auto;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
     }
 
     /* Loading Screen */
@@ -390,21 +459,43 @@
       </div>
     </div>
     <div id="look-zone"></div>
-    <button id="mobile-menu-btn">☰ Menu</button>
   </div>
 
-  <!-- Teleport Room Quick Nav & Interactive HUD -->
-  <div id="hud">
-    <button class="hud-btn" data-room="entrance">🚪 Cửa chính</button>
-    <button class="hud-btn" data-room="living">🛋️ Phòng khách</button>
-    <button class="hud-btn" data-room="kitchen">🍳 Bếp & Ăn</button>
-    <button class="hud-btn" data-room="master">🛏️ Phòng Master</button>
-    <button class="hud-btn" data-room="twin">🛏️ Phòng Twin</button>
-    <button class="hud-btn" id="btn-camera-view" style="color: #c084fc;">👤 Góc nhìn: TPP (Thanos)</button>
-    <button class="hud-btn" id="btn-light" style="color: #facc15;">💡 Đèn: BẬT</button>
-    <button class="hud-btn" id="btn-daynight">☀️ Ban ngày</button>
-    <button class="hud-btn" id="btn-collision" style="color: #4ade80;">🧱 Chống xuyên: BẬT</button>
-    <button class="hud-btn" id="btn-fullscreen">⛶ Toàn màn hình</button>
+  <!-- Top Right Quick Action Bar (Nhỏ, gọn, không choán màn hình) -->
+  <div id="top-quick-bar">
+    <button class="quick-btn" id="btn-quick-cam" title="Đổi góc nhìn">👤 TPP (Thanos)</button>
+    <button class="quick-btn" id="btn-quick-light" title="Bật/tắt đèn">💡 Đèn: BẬT</button>
+    <button class="quick-btn" id="btn-open-drawer" style="background: rgba(56, 189, 248, 0.25); border-color: #38bdf8;">☰ Menu</button>
+    <button class="quick-btn" id="btn-fullscreen" title="Toàn màn hình">⛶</button>
+  </div>
+
+  <!-- Backdrop -->
+  <div id="drawer-backdrop"></div>
+
+  <!-- Side Drawer (Bên hông phải - Thu gọn khi không dùng) -->
+  <div id="side-drawer">
+    <div class="drawer-header">
+      <span class="drawer-title">🏠 Điều Khiển</span>
+      <button class="drawer-close-btn" id="btn-close-drawer">✕</button>
+    </div>
+
+    <div class="drawer-section-title">📍 Chuyển Phòng Nhanh</div>
+    <div class="drawer-btn-grid">
+      <button class="drawer-btn" data-room="entrance">🚪 Cửa chính</button>
+      <button class="drawer-btn" data-room="living">🛋️ Phòng khách</button>
+      <button class="drawer-btn" data-room="kitchen">🍳 Bếp & Ăn</button>
+      <button class="drawer-btn" data-room="master">🛏️ Phòng Master (Nhảy)</button>
+      <button class="drawer-btn" data-room="twin">🛏️ Phòng Twin</button>
+    </div>
+
+    <div class="drawer-section-title">⚙️ Cài Đặt & Tiện Ích</div>
+    <div class="drawer-btn-grid">
+      <button class="drawer-btn" id="btn-drawer-camera">👤 Góc nhìn: TPP (Thanos)</button>
+      <button class="drawer-btn" id="btn-drawer-light" style="color: #facc15;">💡 Đèn trong nhà: BẬT</button>
+      <button class="drawer-btn" id="btn-drawer-daynight">☀️ Chế độ: Ban ngày</button>
+      <button class="drawer-btn" id="btn-drawer-collision" style="color: #4ade80;">🧱 Chống xuyên: BẬT</button>
+      <button class="drawer-btn" id="btn-drawer-help">❓ Hướng dẫn điều khiển</button>
+    </div>
   </div>
 
   <div id="canvas-container"></div>
@@ -611,11 +702,46 @@
       }
     });
 
-    if (mobileMenuBtn) {
-      mobileMenuBtn.addEventListener('click', (e) => {
+    // Side Drawer Open / Close System (Bên hông phải)
+    const sideDrawer = document.getElementById('side-drawer');
+    const drawerBackdrop = document.getElementById('drawer-backdrop');
+    const btnOpenDrawer = document.getElementById('btn-open-drawer');
+    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+    const btnDrawerHelp = document.getElementById('btn-drawer-help');
+
+    function openDrawer() {
+      if (sideDrawer) sideDrawer.classList.add('open');
+      if (drawerBackdrop) drawerBackdrop.classList.add('show');
+    }
+
+    function closeDrawer() {
+      if (sideDrawer) sideDrawer.classList.remove('open');
+      if (drawerBackdrop) drawerBackdrop.classList.remove('show');
+    }
+
+    if (btnOpenDrawer) {
+      btnOpenDrawer.addEventListener('click', (e) => {
         e.stopPropagation();
+        openDrawer();
+      });
+    }
+    if (btnCloseDrawer) {
+      btnCloseDrawer.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeDrawer();
+      });
+    }
+    if (drawerBackdrop) {
+      drawerBackdrop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeDrawer();
+      });
+    }
+    if (btnDrawerHelp) {
+      btnDrawerHelp.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeDrawer();
         overlay.classList.remove('hidden');
-        if (touchControls) touchControls.style.display = 'none';
       });
     }
 
@@ -902,21 +1028,36 @@
     });
 
     let lightsOn = true;
-    const btnLight = document.getElementById('btn-light');
+    const btnQuickLight = document.getElementById('btn-quick-light');
+    const btnDrawerLight = document.getElementById('btn-drawer-light');
+
+    function updateLightButtons() {
+      if (btnQuickLight) {
+        btnQuickLight.textContent = lightsOn ? '💡 Đèn: BẬT' : '🌑 Đèn: TẮT';
+        btnQuickLight.style.color = lightsOn ? '#facc15' : '#94a3b8';
+      }
+      if (btnDrawerLight) {
+        btnDrawerLight.textContent = lightsOn ? '💡 Đèn trong nhà: BẬT' : '🌑 Đèn trong nhà: TẮT';
+        btnDrawerLight.style.color = lightsOn ? '#facc15' : '#94a3b8';
+      }
+    }
 
     function toggleLights() {
       lightsOn = !lightsOn;
       indoorLightsGroup.visible = lightsOn;
       playSwitchSound();
-      if (btnLight) {
-        btnLight.textContent = lightsOn ? '💡 Đèn: BẬT' : '🌑 Đèn: TẮT';
-        btnLight.style.color = lightsOn ? '#facc15' : '#94a3b8';
-      }
+      updateLightButtons();
       showToast(lightsOn ? '💡 Đèn trong nhà: Đã BẬT' : '🌑 Đèn trong nhà: Đã TẮT');
     }
 
-    if (btnLight) {
-      btnLight.addEventListener('click', (e) => {
+    if (btnQuickLight) {
+      btnQuickLight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLights();
+      });
+    }
+    if (btnDrawerLight) {
+      btnDrawerLight.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleLights();
       });
@@ -924,7 +1065,7 @@
 
     // Day / Night Toggle System
     let isNight = false;
-    const btnDayNight = document.getElementById('btn-daynight');
+    const btnDrawerDayNight = document.getElementById('btn-drawer-daynight');
 
     function toggleDayNight() {
       isNight = !isNight;
@@ -936,7 +1077,7 @@
         ambientLight.intensity = 0.2;
         hemiLight.intensity = 0.3;
         if (!lightsOn) toggleLights(); // Đêm tự bật đèn ấm cúng
-        if (btnDayNight) btnDayNight.textContent = '🌙 Ban đêm';
+        if (btnDrawerDayNight) btnDrawerDayNight.textContent = '🌙 Chế độ: Ban đêm';
         showToast('🌙 Chế độ Ban đêm (Ấm cúng)');
       } else {
         scene.background.set(0xdce7f0);
@@ -945,13 +1086,13 @@
         sunLight.intensity = 1.5;
         ambientLight.intensity = 0.6;
         hemiLight.intensity = 1.2;
-        if (btnDayNight) btnDayNight.textContent = '☀️ Ban ngày';
+        if (btnDrawerDayNight) btnDrawerDayNight.textContent = '☀️ Chế độ: Ban ngày';
         showToast('☀️ Chế độ Ban ngày (Sáng sủa)');
       }
     }
 
-    if (btnDayNight) {
-      btnDayNight.addEventListener('click', (e) => {
+    if (btnDrawerDayNight) {
+      btnDrawerDayNight.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleDayNight();
       });
@@ -960,19 +1101,19 @@
     // 7. Collision Toggle
     let collisionEnabled = true;
     const collidableMeshes = [];
-    const btnCollision = document.getElementById('btn-collision');
+    const btnDrawerCollision = document.getElementById('btn-drawer-collision');
 
     function toggleCollision() {
       collisionEnabled = !collisionEnabled;
-      if (btnCollision) {
-        btnCollision.textContent = collisionEnabled ? '🧱 Chống xuyên: BẬT' : '👻 Chống xuyên: TẮT';
-        btnCollision.style.color = collisionEnabled ? '#4ade80' : '#f87171';
+      if (btnDrawerCollision) {
+        btnDrawerCollision.textContent = collisionEnabled ? '🧱 Chống xuyên: BẬT' : '👻 Chống xuyên: TẮT';
+        btnDrawerCollision.style.color = collisionEnabled ? '#4ade80' : '#f87171';
       }
       showToast(collisionEnabled ? '🧱 Chống xuyên: BẬT' : '👻 Chống xuyên: TẮT (Ghost Mode)');
     }
 
-    if (btnCollision) {
-      btnCollision.addEventListener('click', (e) => {
+    if (btnDrawerCollision) {
+      btnDrawerCollision.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleCollision();
       });
@@ -1064,7 +1205,8 @@
     let thanosModel = null;
     let thanosMixer = null;
     let walkAction = null;
-    const btnCameraView = document.getElementById('btn-camera-view');
+    const btnQuickCam = document.getElementById('btn-quick-cam');
+    const btnDrawerCamera = document.getElementById('btn-drawer-camera');
 
     // Vũ công Black Widow nhảy Hip Hop trên giường Master
     let dancerModel = null;
@@ -1079,9 +1221,13 @@
       if (thanosModel) {
         thanosModel.visible = isTPP;
       }
-      if (btnCameraView) {
-        btnCameraView.textContent = isTPP ? '👤 Góc nhìn: TPP (Thanos)' : '👁️ Góc nhìn: FPS';
-        btnCameraView.style.color = isTPP ? '#c084fc' : '#38bdf8';
+      if (btnQuickCam) {
+        btnQuickCam.textContent = isTPP ? '👤 TPP (Thanos)' : '👁️ FPS';
+        btnQuickCam.style.color = isTPP ? '#c084fc' : '#38bdf8';
+      }
+      if (btnDrawerCamera) {
+        btnDrawerCamera.textContent = isTPP ? '👤 Góc nhìn: TPP (Thanos)' : '👁️ Góc nhìn: FPS';
+        btnDrawerCamera.style.color = isTPP ? '#c084fc' : '#38bdf8';
       }
       showToast(isTPP ? '👤 Phím 2: Góc nhìn qua vai (Thanos TPP)' : '👁️ Phím 1: Góc nhìn thứ nhất (FPS)');
     }
@@ -1090,8 +1236,14 @@
       setCameraMode(!isTPP);
     }
 
-    if (btnCameraView) {
-      btnCameraView.addEventListener('click', (e) => {
+    if (btnQuickCam) {
+      btnQuickCam.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCameraView();
+      });
+    }
+    if (btnDrawerCamera) {
+      btnDrawerCamera.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleCameraView();
       });
@@ -1177,9 +1329,10 @@
       twin:     { x: 8.8, y: EYE_HEIGHT, z: -3.0, rotY: Math.PI }
     };
 
-    document.querySelectorAll('.hud-btn[data-room]').forEach((btn) => {
+    document.querySelectorAll('[data-room]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        closeDrawer();
         const roomKey = btn.getAttribute('data-room');
         const pos = roomPositions[roomKey];
         if (pos) {
