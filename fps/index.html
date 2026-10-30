@@ -2,7 +2,11 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0b0f19">
   <title>Demohouse 3D Walkthrough - Realtime FPS</title>
   <style>
     * {
@@ -10,18 +14,26 @@
       margin: 0;
       padding: 0;
       user-select: none;
+      -webkit-user-select: none;
     }
     body, html {
       width: 100%;
       height: 100%;
+      height: 100dvh;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #111;
       color: #fff;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      position: fixed;
+      top: 0;
+      left: 0;
     }
     #canvas-container {
       width: 100%;
       height: 100%;
+      height: 100dvh;
       position: absolute;
       top: 0;
       left: 0;
@@ -145,7 +157,7 @@
     /* HUD Bar (Bottom) */
     #hud {
       position: absolute;
-      bottom: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -153,7 +165,7 @@
       z-index: 60;
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(10px);
-      padding: 8px 16px;
+      padding: 8px calc(16px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
       border-radius: 30px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       max-width: 95vw;
@@ -162,8 +174,8 @@
     }
     @media (max-width: 768px) {
       #hud {
-        bottom: 12px;
-        padding: 6px 10px;
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        padding: 5px calc(10px + env(safe-area-inset-right, 0px)) 5px calc(10px + env(safe-area-inset-left, 0px));
         gap: 6px;
       }
       .hud-btn {
@@ -345,13 +357,14 @@
       
       <!-- Hướng dẫn Desktop -->
       <div class="controls-grid" id="desktop-controls">
-        <div><span class="key">W S A D</span> / <span class="key">Mũi tên</span> : Di chuyển</div>
+        <div><span class="key">W S A D</span> / <span class="key">Mũi tên</span> : Di chuyển (Giữ để đi)</div>
         <div><span class="key">Chuột</span> : Lắc nhìn 360°</div>
+        <div><span class="key">1</span> : Góc nhìn thứ nhất (FPS)</div>
+        <div><span class="key">2</span> (hoặc <span class="key">V</span>) : Góc nhìn Thanos (TPP)</div>
         <div><span class="key">L</span> : Bật / Tắt đèn trong nhà</div>
         <div><span class="key">N</span> : Đổi Ban ngày / Ban đêm</div>
         <div><span class="key">C</span> : Bật / Tắt chống xuyên tường</div>
         <div><span class="key">Shift</span> : Giữ để chạy nhanh</div>
-        <div><span class="key">🚪 Cửa</span> : Tự động mở khi lại gần (< 2m)</div>
         <div><span class="key">ESC</span> : Nhả chuột / Menu</div>
       </div>
 
@@ -359,8 +372,8 @@
       <div class="controls-grid" id="mobile-controls" style="display: none;">
         <div><span class="key">🕹️ Nửa Trái</span> : Cần gạt di chuyển</div>
         <div><span class="key">👆 Nửa Phải</span> : Vuốt đổi góc nhìn</div>
+        <div><span class="key">👤 Nút Góc nhìn</span> : Thanos TPP / FPS</div>
         <div><span class="key">💡 Nút HUD</span> : Bật/tắt đèn & ngày/đêm</div>
-        <div><span class="key">🚪 Cửa</span> : Tự động mở khi lại gần (< 2m)</div>
       </div>
 
       <button class="btn-start" id="start-btn">Bắt Đầu Trải Nghiệm</button>
@@ -387,6 +400,7 @@
     <button class="hud-btn" data-room="kitchen">🍳 Bếp & Ăn</button>
     <button class="hud-btn" data-room="master">🛏️ Phòng Master</button>
     <button class="hud-btn" data-room="twin">🛏️ Phòng Twin</button>
+    <button class="hud-btn" id="btn-camera-view" style="color: #c084fc;">👤 Góc nhìn: TPP (Thanos)</button>
     <button class="hud-btn" id="btn-light" style="color: #facc15;">💡 Đèn: BẬT</button>
     <button class="hud-btn" id="btn-daynight">☀️ Ban ngày</button>
     <button class="hud-btn" id="btn-collision" style="color: #4ade80;">🧱 Chống xuyên: BẬT</button>
@@ -411,13 +425,13 @@
     const EYE_HEIGHT = 1.65;
     camera.position.set(5.2, EYE_HEIGHT, -1.8); // Bắt đầu ở phòng khách
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Hạ độ phân giải xuống 0.85 (tiết kiệm GPU tối đa, siêu mượt và mát máy cho bản demo)
+    renderer.setPixelRatio(0.85);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false; // Tắt tính toán shadow real-time để FPS tăng vọt
     container.appendChild(renderer.domElement);
 
     // 2. Lighting Setup (Đảm bảo sáng đẹp, ấm áp)
@@ -465,12 +479,120 @@
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const overlay = document.getElementById('overlay');
 
-    const controls = new PointerLockControls(camera, document.body);
+    // Pointer Lock Setup: Dùng dummy target để PointerLockControls không ghi đè trực tiếp lên Camera thật
+    const dummyTarget = new THREE.Object3D();
+    const controls = new PointerLockControls(dummyTarget, document.body);
+
+    // === 3. UNREAL ENGINE / UNITY STYLE SPRING ARM & CAMERA BOOM SYSTEM ===
+    // Spring Arm parameters
+    let springArmYaw = 0;        // Góc xoay ngang tự do quanh nhân vật (Chuột X)
+    let springArmPitch = 0.12;    // Góc nhìn hơi chúc xuống tự nhiên (~7 độ) (Chuột Y)
+    
+    // Khoảng cách cánh tay ảo (Target Arm Length) - Trong không gian nhà ở: 1.55m là tỷ lệ vàng
+    const TARGET_ARM_LENGTH = 1.55;
+    let currentArmLength = TARGET_ARM_LENGTH;
+    
+    // Vị trí gốc (Pivot Point) đặt tại vùng xương vai / đầu Thanos (Y = 1.40m)
+    const PIVOT_HEIGHT = 1.40;
+    
+    // Góc lệch vai phải (Right Shoulder Socket Offset): Lệch phải 0.28m, cao 0.05m
+    const SOCKET_OFFSET_X = 0.28;
+    const SOCKET_OFFSET_Y = 0.05;
+
+    // Giới hạn góc ngước lên / nhìn xuống (+- 55 độ) tránh lật camera
+    const MIN_PITCH = -0.55; // Ngước nhìn trần ~32 độ
+    const MAX_PITCH = 0.85;  // Chúi nhìn sàn ~48 độ
+
+    document.addEventListener('mousemove', (event) => {
+      if (controls.isLocked) {
+        const movementX = event.movementX || 0;
+        const movementY = event.movementY || 0;
+
+        // Chuột CHỈ điều khiển góc quay của Spring Arm quanh nhân vật, KHÔNG làm nhân vật di chuyển
+        springArmYaw -= movementX * 0.0024;
+        springArmPitch -= movementY * 0.0020;
+
+        springArmPitch = Math.max(MIN_PITCH, Math.min(MAX_PITCH, springArmPitch));
+      }
+    });
+
+    // Fullscreen Helpers (Tương thích Safari iOS, iPad, Android Chrome & PC)
+    function enterFullscreen() {
+      const docEl = document.documentElement;
+      const requestFs = docEl.requestFullscreen || 
+                        docEl.webkitRequestFullscreen || 
+                        docEl.webkitRequestFullScreen || 
+                        docEl.mozRequestFullScreen || 
+                        docEl.msRequestFullscreen;
+
+      if (requestFs) {
+        try {
+          const promise = requestFs.call(docEl);
+          if (promise && promise.catch) promise.catch(() => {});
+        } catch (err) {}
+      }
+
+      // Safari iOS: Cuộn nhẹ 1px để Safari tự động ẩn thanh địa chỉ URL và thanh điều hướng bên dưới
+      setTimeout(() => {
+        window.scrollTo(0, 1);
+        if (typeof camera !== 'undefined' && typeof renderer !== 'undefined') {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+      }, 150);
+    }
+
+    function exitFullscreen() {
+      const exitFs = document.exitFullscreen || 
+                     document.webkitExitFullscreen || 
+                     document.mozCancelFullScreen || 
+                     document.msExitFullscreen;
+      if (exitFs && (document.fullscreenElement || document.webkitFullscreenElement)) {
+        try {
+          const promise = exitFs.call(document);
+          if (promise && promise.catch) promise.catch(() => {});
+        } catch (err) {}
+      }
+    }
+
+    function toggleFullscreen() {
+      const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!isFs) {
+        enterFullscreen();
+      } else {
+        exitFullscreen();
+      }
+    }
+
+    // Tự động tối ưu toàn màn hình khi người dùng xoay ngang điện thoại
+    function handleOrientationChange() {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      if (isTouch) {
+        if (isLandscape) {
+          enterFullscreen();
+          showToast('🔄 Đã xoay ngang: Đang ẩn thanh Safari để mở rộng tối đa');
+        }
+        setTimeout(() => {
+          window.scrollTo(0, 1);
+          if (typeof camera !== 'undefined' && typeof renderer !== 'undefined') {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+          }
+        }, 200);
+      }
+    }
+
+    window.addEventListener('orientationchange', () => setTimeout(handleOrientationChange, 150));
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener('change', () => setTimeout(handleOrientationChange, 150));
+    }
 
     if (isTouch) {
       if (desktopControlsDiv) desktopControlsDiv.style.display = 'none';
       if (mobileControlsDiv) mobileControlsDiv.style.display = 'grid';
-      if (overlaySubtext) overlaySubtext.textContent = 'Trải nghiệm 3D trên màn hình cảm ứng. Chạm vào nút bên dưới để bắt đầu.';
+      if (overlaySubtext) overlaySubtext.textContent = 'Trải nghiệm 3D trên màn hình cảm ứng. Xoay ngang máy để có góc nhìn rộng và đẹp nhất.';
       if (startBtn) startBtn.textContent = 'Chạm Để Bắt Đầu Khám Phá';
       if (reticle) reticle.style.display = 'none';
     }
@@ -480,6 +602,7 @@
       initAudio();
 
       if (isTouch) {
+        enterFullscreen();
         overlay.classList.add('hidden');
         if (touchControls) touchControls.style.display = 'block';
         showToast('🕹️ Nửa trái: Cần gạt đi lại • Nửa phải: Vuốt nhìn 360°');
@@ -574,7 +697,6 @@
     let lookTouchId = null;
     let lastLookX = 0;
     let lastLookY = 0;
-    const cameraEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 
     if (lookZone) {
       lookZone.addEventListener('touchstart', (e) => {
@@ -596,12 +718,10 @@
             lastLookX = touch.clientX;
             lastLookY = touch.clientY;
 
-            // Xoay góc nhìn camera mượt mà
-            cameraEuler.setFromQuaternion(camera.quaternion);
-            cameraEuler.y -= deltaX * 0.0038;
-            cameraEuler.x -= deltaY * 0.0035;
-            cameraEuler.x = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, cameraEuler.x));
-            camera.quaternion.setFromEuler(cameraEuler);
+            // Đồng bộ xoay Spring Arm cho Mobile Touch Look
+            springArmYaw -= deltaX * 0.0035;
+            springArmPitch -= deltaY * 0.0030;
+            springArmPitch = Math.max(MIN_PITCH, Math.min(MAX_PITCH, springArmPitch));
             break;
           }
         }
@@ -650,6 +770,17 @@
         case 'ShiftLeft':
         case 'ShiftRight':
           moveState.sprint = true;
+          break;
+        case 'Digit1':
+        case 'Numpad1':
+          setCameraMode(false); // Phím 1: Góc nhìn thứ nhất (FPS)
+          break;
+        case 'Digit2':
+        case 'Numpad2':
+          setCameraMode(true);  // Phím 2: Góc nhìn Thanos (TPP)
+          break;
+        case 'KeyV':
+          toggleCameraView();
           break;
         case 'KeyL':
           toggleLights();
@@ -870,32 +1001,28 @@
 
             const name = child.name.toLowerCase();
 
-            // Phát hiện các cánh cửa để tự động đóng/mở khi lại gần
+            // Tạm thời ẩn / xóa hẳn cánh cửa phòng ngủ Master và Twin
+            if (name.includes('masterbed') || name.includes('twinbed')) {
+              child.visible = false;
+              // Đảm bảo không nằm trong vật cản va chạm
+              return;
+            }
+
+            // Phát hiện các cánh cửa khác: Mở toang sẵn 100% để đi lại tự do
             if (name.includes('leaf') || name.includes('sash_sliding')) {
               const isSlide = name.includes('sash_sliding');
-              const worldPos = new THREE.Vector3();
-              child.getWorldPosition(worldPos);
-
-              // Góc quay mở cánh cửa
-              let openRotDelta = Math.PI * 0.45; // ~81 độ
-              if (name.includes('hallway') || name.includes('closet')) {
-                openRotDelta = -Math.PI * 0.45;
+              if (isSlide) {
+                // Trượt mở hẳn cửa kính phòng khách
+                child.position.x += 1.1;
+              } else {
+                // Mở toang cánh cửa xoay ~85 độ
+                let openAngle = Math.PI * 0.48;
+                if (name.includes('hallway') || name.includes('closet')) {
+                  openAngle = -Math.PI * 0.48;
+                }
+                child.rotation.y += openAngle;
               }
-
-              interactiveDoors.push({
-                mesh: child,
-                name: child.name,
-                type: isSlide ? 'slide' : 'swing',
-                worldPos: worldPos,
-                initialRotY: child.rotation.y,
-                openRotY: child.rotation.y + openRotDelta,
-                initialPosX: child.position.x,
-                openPosX: child.position.x + 0.9,
-                isOpen: false
-              });
-
-              // Cửa ban đầu đóng nên là vật cản va chạm
-              collidableMeshes.push(child);
+              // Cửa đã mở toang nép vào tường nên KHÔNG chặn lối đi
               return;
             }
 
@@ -932,7 +1059,116 @@
       }
     );
 
-    // 10. Room Teleport Presets
+    // 10. Thanos Character & TPP Camera System
+    let isTPP = true; // Mặc định góc nhìn qua vai Thanos
+    let thanosModel = null;
+    let thanosMixer = null;
+    let walkAction = null;
+    const btnCameraView = document.getElementById('btn-camera-view');
+
+    // Vũ công Black Widow nhảy Hip Hop trên giường Master
+    let dancerModel = null;
+    let dancerMixer = null;
+
+    // Tọa độ người chơi thực tế trên sàn
+    const playerPos = new THREE.Vector3(5.2, 0, -1.8);
+    let playerYaw = 0; // Hướng xoay người
+
+    function setCameraMode(tppMode) {
+      isTPP = tppMode;
+      if (thanosModel) {
+        thanosModel.visible = isTPP;
+      }
+      if (btnCameraView) {
+        btnCameraView.textContent = isTPP ? '👤 Góc nhìn: TPP (Thanos)' : '👁️ Góc nhìn: FPS';
+        btnCameraView.style.color = isTPP ? '#c084fc' : '#38bdf8';
+      }
+      showToast(isTPP ? '👤 Phím 2: Góc nhìn qua vai (Thanos TPP)' : '👁️ Phím 1: Góc nhìn thứ nhất (FPS)');
+    }
+
+    function toggleCameraView() {
+      setCameraMode(!isTPP);
+    }
+
+    if (btnCameraView) {
+      btnCameraView.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCameraView();
+      });
+    }
+
+    // Load Thanos Walk Model
+    loader.load(
+      'assets/thanos_walk.glb',
+      (gltf) => {
+        thanosModel = gltf.scene;
+        // Thanos thu nhỏ thêm 15% (1.96 * 0.85 = 1.66)
+        thanosModel.scale.set(1.66, 1.66, 1.66);
+        thanosModel.position.copy(playerPos);
+
+        thanosModel.traverse((c) => {
+          if (c.isMesh) {
+            c.castShadow = true;
+            c.receiveShadow = true;
+          }
+        });
+
+        // Thiết lập Animation Mixer
+        if (gltf.animations && gltf.animations.length > 0) {
+          thanosMixer = new THREE.AnimationMixer(thanosModel);
+          walkAction = thanosMixer.clipAction(gltf.animations[0]);
+          walkAction.setEffectiveTimeScale(0.8);
+          walkAction.play();
+          walkAction.paused = true;
+        }
+
+        scene.add(thanosModel);
+        thanosModel.visible = isTPP;
+        console.log('Đã nạp Thanos vào nhà thành công!');
+      },
+      undefined,
+      (err) => {
+        console.error('Không nạp được model Thanos:', err);
+      }
+    );
+
+    // Load Dancer Black Widow nhảy Hip Hop trên giường Master
+    loader.load(
+      'assets/dancer_master_bed.glb',
+      (gltf) => {
+        dancerModel = gltf.scene;
+        // Đặt chính giữa nệm giường phòng Master (X: 12.8m, Y trên nệm: 0.52m, Z: -1.55m)
+        dancerModel.scale.set(0.68, 0.68, 0.68); // Chiều cao vừa vặn ~1.65m
+        dancerModel.position.set(12.8, 0.52, -1.55);
+        dancerModel.rotation.y = -Math.PI / 2; // Hướng mặt về phía cửa ra vào chào đón khách
+
+        dancerModel.traverse((c) => {
+          if (c.isMesh) {
+            c.castShadow = true;
+            c.receiveShadow = true;
+            if (c.material) {
+              c.material.roughness = 0.4;
+            }
+          }
+        });
+
+        if (gltf.animations && gltf.animations.length > 0) {
+          dancerMixer = new THREE.AnimationMixer(dancerModel);
+          const danceAction = dancerMixer.clipAction(gltf.animations[0]);
+          danceAction.setEffectiveTimeScale(1.0);
+          danceAction.play(); // Nhảy liên tục lặp lại
+        }
+
+        scene.add(dancerModel);
+        console.log('Đã đưa vũ công lên giường phòng Master nhảy múa thành công!');
+      },
+      undefined,
+      (err) => {
+        console.error('Không nạp được vũ công nhảy:', err);
+      }
+    );
+
+    // 11. Room Teleport Presets
     const roomPositions = {
       entrance: { x: 9.2, y: EYE_HEIGHT, z: -0.4, rotY: 0 },
       living:   { x: 5.2, y: EYE_HEIGHT, z: -2.0, rotY: -Math.PI / 4 },
@@ -947,43 +1183,46 @@
         const roomKey = btn.getAttribute('data-room');
         const pos = roomPositions[roomKey];
         if (pos) {
-          camera.position.set(pos.x, pos.y, pos.z);
-          camera.rotation.set(0, pos.rotY, 0);
-          controls.lock();
+          playerPos.set(pos.x, 0, pos.z);
+          springArmYaw = pos.rotY;
+          springArmPitch = 0.12;
+          currentArmLength = TARGET_ARM_LENGTH;
+          playerYaw = pos.rotY;
+          if (thanosModel) {
+            thanosModel.position.copy(playerPos);
+            thanosModel.rotation.y = pos.rotY + Math.PI;
+          }
+          if (!isTouch) controls.lock();
           showToast(`Nhảy tới ${btn.textContent}`);
         }
       });
     });
 
     // Fullscreen Button
-    document.getElementById('btn-fullscreen').addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    });
+    const btnFs = document.getElementById('btn-fullscreen');
+    if (btnFs) {
+      btnFs.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFullscreen();
+      });
+    }
 
-    // 11. Collision Detection System (Wall Sliding & Anti-Clipping)
+    // 12. Collision Detection System (Wall Sliding & Anti-Clipping)
     const raycaster = new THREE.Raycaster();
-    const PLAYER_RADIUS = 0.35; // Bán kính thân người 35cm
+    const PLAYER_RADIUS = 0.40; // Bán kính thân người Thanos (40cm sau khi thu nhỏ 70%)
 
-    const collisionDirections = [
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(-1, 0, 0),
-      new THREE.Vector3(0, 0, 1),
-      new THREE.Vector3(0, 0, -1),
-      new THREE.Vector3(0.7071, 0, 0.7071),
-      new THREE.Vector3(-0.7071, 0, 0.7071),
-      new THREE.Vector3(0.7071, 0, -0.7071),
-      new THREE.Vector3(-0.7071, 0, -0.7071)
-    ];
+    // 16 hướng kiểm tra va chạm quanh Thanos (quét dày 360 độ)
+    const collisionDirections = [];
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      collisionDirections.push(new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)));
+    }
 
     function checkPositionCollision(px, pz) {
       if (!collisionEnabled || collidableMeshes.length === 0) return false;
 
-      const heights = [0.4, 1.1];
+      // Quét 3 tầng: Chân (0.2m), Hông (0.65m), Ngực (1.1m)
+      const heights = [0.2, 0.65, 1.1];
       for (let i = 0; i < heights.length; i++) {
         const origin = new THREE.Vector3(px, heights[i], pz);
         for (let j = 0; j < collisionDirections.length; j++) {
@@ -991,7 +1230,7 @@
           raycaster.far = PLAYER_RADIUS;
           const hits = raycaster.intersectObjects(collidableMeshes, false);
           if (hits.length > 0 && hits[0].distance < PLAYER_RADIUS) {
-            return true;
+            return true; // Chạm vật cản
           }
         }
       }
@@ -1016,44 +1255,18 @@
 
       const delta = Math.min(clock.getDelta(), 0.1);
 
-      // --- CẬP NHẬT CỬA TỰ ĐỘNG ĐÓNG / MỞ KHI LẠI GẦN ---
-      for (let i = 0; i < interactiveDoors.length; i++) {
-        const d = interactiveDoors[i];
-        const dist = Math.hypot(camera.position.x - d.worldPos.x, camera.position.z - d.worldPos.z);
-
-        // Lại gần dưới 1.9m -> Tự động mở cửa & mở đường đi
-        if (dist < 1.9 && !d.isOpen) {
-          d.isOpen = true;
-          playDoorSound();
-          showToast(`🚪 Cửa tự động mở...`);
-
-          // Bỏ va chạm để người chơi bước xuyên qua cửa
-          const idx = collidableMeshes.indexOf(d.mesh);
-          if (idx !== -1) collidableMeshes.splice(idx, 1);
-        }
-        // Đi xa quá 2.6m -> Tự động khép cửa lại & bật lại va chạm
-        else if (dist > 2.6 && d.isOpen) {
-          d.isOpen = false;
-          playDoorSound();
-
-          // Thêm lại vào danh sách va chạm
-          if (collidableMeshes.indexOf(d.mesh) === -1) {
-            collidableMeshes.push(d.mesh);
-          }
-        }
-
-        // Animation mượt mà
-        if (d.type === 'swing') {
-          const targetRot = d.isOpen ? d.openRotY : d.initialRotY;
-          d.mesh.rotation.y = THREE.MathUtils.lerp(d.mesh.rotation.y, targetRot, 0.08);
-        } else if (d.type === 'slide') {
-          const targetX = d.isOpen ? d.openPosX : d.initialPosX;
-          d.mesh.position.x = THREE.MathUtils.lerp(d.mesh.position.x, targetX, 0.08);
-        }
+      // --- CẬP NHẬT ANIMATION MIXER CỦA THANOS VÀ VŨ CÔNG ---
+      if (thanosMixer) {
+        thanosMixer.update(delta);
+      }
+      if (dancerMixer) {
+        dancerMixer.update(delta);
       }
 
       // --- CẬP NHẬT DI CHUYỂN NGƯỜI CHƠI (HỖ TRỢ CẢ PC & MOBILE) ---
       const isExploring = controls.isLocked || (isTouch && overlay.classList.contains('hidden'));
+
+      let isMoving = false;
 
       if (isExploring) {
         let inputZ = 0;
@@ -1076,37 +1289,125 @@
         const inputMag = Math.hypot(inputX, inputZ);
 
         if (inputMag > 0.08) {
-          const speed = isSprint ? 5.2 : 3.0;
+          // Tốc độ Thanos: đi bộ 1.35 m/s, chạy 2.5 m/s
+          const speed = isSprint ? 2.5 : 1.35;
 
-          camera.getWorldDirection(forwardVector);
-          forwardVector.y = 0;
-          forwardVector.normalize();
+          // Hướng nhìn ngang trên mặt phẳng XZ từ góc Yaw của Spring Arm
+          // (Three.js: yaw = 0 nhìn về -Z)
+          const forwardX = -Math.sin(springArmYaw);
+          const forwardZ = -Math.cos(springArmYaw);
 
-          rightVector.crossVectors(forwardVector, camera.up).normalize();
+          // Hướng ngang sang phải (vuông góc)
+          const rightX = Math.cos(springArmYaw);
+          const rightZ = -Math.sin(springArmYaw);
 
-          moveDirection.set(0, 0, 0);
-          moveDirection.addScaledVector(forwardVector, inputZ);
-          moveDirection.addScaledVector(rightVector, inputX);
-          moveDirection.normalize();
+          // Vector di chuyển theo input WASD
+          moveDirection.set(
+            forwardX * inputZ + rightX * inputX,
+            0,
+            forwardZ * inputZ + rightZ * inputX
+          ).normalize();
 
           const moveDist = speed * delta * Math.min(1.0, inputMag);
           const dx = moveDirection.x * moveDist;
           const dz = moveDirection.z * moveDist;
 
-          // Wall Sliding & Chống xuyên tường
-          const targetX = Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, camera.position.x + dx));
-          const targetZ = Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, camera.position.z + dz));
+          // Chống xuyên tường cho thân nhân vật (playerPos)
+          const targetX = Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, playerPos.x + dx));
+          const targetZ = Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, playerPos.z + dz));
 
-          if (!checkPositionCollision(targetX, camera.position.z)) {
-            camera.position.x = targetX;
+          let didMove = false;
+          if (!checkPositionCollision(targetX, playerPos.z)) {
+            playerPos.x = targetX;
+            didMove = true;
           }
-          if (!checkPositionCollision(camera.position.x, targetZ)) {
-            camera.position.z = targetZ;
+          if (!checkPositionCollision(playerPos.x, targetZ)) {
+            playerPos.z = targetZ;
+            didMove = true;
+          }
+
+          // Chỉ xem là di chuyển khi vị trí thực sự thay đổi (không bị tường ép chặt)
+          isMoving = didMove;
+
+          // Xoay nhân vật mượt mà về hướng di chuyển khi có di chuyển
+          if (didMove && thanosModel) {
+            // Thanos model quay mặt về hướng di chuyển (Math.atan2(dx, dz))
+            const targetFaceAngle = Math.atan2(moveDirection.x, moveDirection.z);
+            let diff = targetFaceAngle - thanosModel.rotation.y;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            thanosModel.rotation.y += diff * Math.min(1.0, delta * 14.0);
           }
         }
 
-        // Cố định tầm mắt 1.65m trên sàn
-        camera.position.y = EYE_HEIGHT;
+        // Cập nhật vị trí nhân vật Thanos trên mặt sàn
+        if (thanosModel) {
+          thanosModel.position.set(playerPos.x, 0, playerPos.z);
+        }
+
+        // Cập nhật animation bước đi của Thanos
+        if (walkAction) {
+          if (isMoving) {
+            walkAction.paused = false;
+            walkAction.setEffectiveTimeScale(isSprint ? 0.9 : 0.65);
+          } else {
+            walkAction.paused = true;
+            walkAction.time = 0; // Đứng yên vững chãi khi dừng hoặc đụng tường
+          }
+        }
+
+        // === CẬP NHẬT SPRING ARM & CAMERA (UNREAL / UNITY PRINCIPLES) ===
+        // 1. Pivot Point: Vùng vai / đầu Thanos
+        const pivot = new THREE.Vector3(playerPos.x, playerPos.y + PIVOT_HEIGHT, playerPos.z);
+
+        // 2. Spring Arm Rotation (Pitch & Yaw)
+        const armEuler = new THREE.Euler(springArmPitch, springArmYaw, 0, 'YXZ');
+        const armQuat = new THREE.Quaternion().setFromEuler(armEuler);
+
+        // Các vector hướng của Spring Arm
+        const armForward = new THREE.Vector3(0, 0, -1).applyQuaternion(armQuat);
+        const armRight = new THREE.Vector3(1, 0, 0).applyQuaternion(armQuat);
+        const armUp = new THREE.Vector3(0, 1, 0).applyQuaternion(armQuat);
+
+        if (isTPP) {
+          // 3. Socket Offset: Lệch sang vai phải Thanos (Right-hand shoulder view)
+          const socketPivot = new THREE.Vector3().copy(pivot)
+            .addScaledVector(armRight, SOCKET_OFFSET_X)
+            .addScaledVector(armUp, SOCKET_OFFSET_Y);
+
+          // 4. Vị trí Camera mong muốn phía sau nhân vật
+          const idealCamPos = new THREE.Vector3().copy(socketPivot)
+            .addScaledVector(armForward, -TARGET_ARM_LENGTH);
+
+          // 5. Raycasting Camera Collision (Dò tia chống camera xuyên tường)
+          const rayDir = new THREE.Vector3().subVectors(idealCamPos, socketPivot).normalize();
+          raycaster.set(socketPivot, rayDir);
+          raycaster.far = TARGET_ARM_LENGTH;
+
+          let targetLength = TARGET_ARM_LENGTH;
+          if (collisionEnabled && collidableMeshes.length > 0) {
+            const hits = raycaster.intersectObjects(collidableMeshes, false);
+            if (hits.length > 0 && hits[0].distance < TARGET_ARM_LENGTH) {
+              // Gặp tường phía sau -> tự động co ngắn cánh tay Spring Arm ngay trước tường
+              targetLength = Math.max(0.20, hits[0].distance - 0.15);
+            }
+          }
+
+          // Co ngắn tức thì khi gặp tường, giãn dài mượt mà khi thoáng
+          if (targetLength < currentArmLength) {
+            currentArmLength = targetLength;
+          } else {
+            currentArmLength += (targetLength - currentArmLength) * Math.min(1.0, delta * 10.0);
+          }
+
+          // Cập nhật vị trí và góc quay chuẩn của Camera
+          camera.position.copy(socketPivot).addScaledVector(rayDir, currentArmLength);
+          camera.quaternion.copy(armQuat);
+        } else {
+          // FPS: Đặt camera ngay tầm mắt người đứng
+          camera.position.set(playerPos.x, EYE_HEIGHT, playerPos.z);
+          camera.quaternion.copy(armQuat);
+        }
       }
 
       renderer.render(scene, camera);
