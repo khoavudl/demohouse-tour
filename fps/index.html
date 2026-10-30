@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demohouse 3D Walkthrough - Realtime FPS</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #111;
+      color: #fff;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Start / Instructions Overlay */
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 15, 25, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      cursor: pointer;
+      transition: opacity 0.3s ease;
+    }
+    #overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .card {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 36px 48px;
+      max-width: 520px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .card h1 {
+      font-size: 26px;
+      margin-bottom: 12px;
+      color: #38bdf8;
+    }
+    .card p {
+      font-size: 15px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      text-align: left;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .controls-grid div span.key {
+      display: inline-block;
+      background: #334155;
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      border: 1px solid #475569;
+    }
+    .btn-start {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+      transition: transform 0.15s, background 0.2s;
+    }
+    .btn-start:hover {
+      transform: scale(1.04);
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #38bdf8;
+      color: #f8fafc;
+      padding: 10px 24px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 150;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #reticle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 50;
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+    }
+
+    /* HUD Bar (Bottom) */
+    #hud {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .hud-btn:hover {
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    /* Loading Screen */
+    #loader {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0b0f19;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      transition: opacity 0.5s ease;
+    }
+    #loader.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #loading-text {
+      font-size: 16px;
+      color: #94a3b8;
+    }
+    #progress-bar-bg {
+      width: 260px;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+      background: #38bdf8;
+      transition: width 0.2s;
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <div id="loading-text">Đang tải mô hình Demohouse... (0%)</div>
+    <div id="progress-bar-bg">
+      <div id="progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast">Thông báo</div>
+
+  <!-- Instruction / Click to Start Overlay -->
+  <div id="overlay">
+    <div class="card">
+      <h1>🏠 Khám Phá Ngôi Nhà (Demohouse)</h1>
+      <p>Trải nghiệm góc nhìn thứ nhất (FPS Walkthrough). Nhấp chuột vào nút bên dưới để bắt đầu.</p>
+      
+      <div class="controls-grid">
+        <div><span class="key">W S A D</span> / <span class="key">Mũi tên</span> : Di chuyển</div>
+        <div><span class="key">Chuột</span> : Lắc nhìn 360°</div>
+        <div><span class="key">L</span> : Bật / Tắt đèn trong nhà</div>
+        <div><span class="key">N</span> : Đổi Ban ngày / Ban đêm</div>
+        <div><span class="key">C</span> : Bật / Tắt chống xuyên tường</div>
+        <div><span class="key">Shift</span> : Giữ để chạy nhanh</div>
+        <div><span class="key">🚪 Cửa</span> : Tự động mở khi lại gần (< 2m)</div>
+        <div><span class="key">ESC</span> : Nhả chuột / Menu</div>
+      </div>
+
+      <button class="btn-start" id="start-btn">Bắt Đầu Trải Nghiệm</button>
+    </div>
+  </div>
+
+  <div id="reticle"></div>
+
+  <!-- Teleport Room Quick Nav & Interactive HUD -->
+  <div id="hud">
+    <button class="hud-btn" data-room="entrance">🚪 Cửa chính</button>
+    <button class="hud-btn" data-room="living">🛋️ Phòng khách</button>
+    <button class="hud-btn" data-room="kitchen">🍳 Bếp & Ăn</button>
+    <button class="hud-btn" data-room="master">🛏️ Phòng Master</button>
+    <button class="hud-btn" data-room="twin">🛏️ Phòng Twin</button>
+    <button class="hud-btn" id="btn-light" style="color: #facc15;">💡 Đèn: BẬT</button>
+    <button class="hud-btn" id="btn-daynight">☀️ Ban ngày</button>
+    <button class="hud-btn" id="btn-collision" style="color: #4ade80;">🧱 Chống xuyên: BẬT</button>
+    <button class="hud-btn" id="btn-fullscreen">⛶ Toàn màn hình</button>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // 1. Scene, Camera, Renderer Setup
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xdce7f0); // Trời xanh nhạt
+    scene.fog = new THREE.FogExp2(0xdce7f0, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+    // Tầm mắt chuẩn người đứng: 1.65m
+    const EYE_HEIGHT = 1.65;
+    camera.position.set(5.2, EYE_HEIGHT, -1.8); // Bắt đầu ở phòng khách
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // 2. Lighting Setup (Đảm bảo sáng đẹp, ấm áp)
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.5);
+    sunLight.position.set(10, 15, 10);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 40;
+    const d = 15;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    scene.add(sunLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    // Đĩa mặt đất xung quanh
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x8fa382, roughness: 0.9 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.01;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // 3. Pointer Lock Controls (Lắc chuột nhìn 360 độ quanh trục)
+    const controls = new PointerLockControls(camera, document.body);
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start-btn');
+
+    startBtn.addEventListener('click', () => {
+      controls.lock();
+    });
+
+    controls.addEventListener('lock', () => {
+      overlay.classList.add('hidden');
+    });
+
+    controls.addEventListener('unlock', () => {
+      overlay.classList.remove('hidden');
+    });
+
+    // 4. Keyboard Movement (WASD + Mũi tên)
+    const moveState = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      sprint: false
+    };
+
+    const onKeyDown = (event) => {
+      switch (event.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+          moveState.forward = true;
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          moveState.backward = true;
+          break;
+        case 'KeyA':
+        case 'ArrowLeft':
+          moveState.left = true;
+          break;
+        case 'KeyD':
+        case 'ArrowRight':
+          moveState.right = true;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveState.sprint = true;
+          break;
+        case 'KeyL':
+          toggleLights();
+          break;
+        case 'KeyN':
+          toggleDayNight();
+          break;
+        case 'KeyC':
+          toggleCollision();
+          break;
+      }
+    };
+
+    const onKeyUp = (event) => {
+      switch (event.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+          moveState.forward = false;
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          moveState.backward = false;
+          break;
+        case 'KeyA':
+        case 'ArrowLeft':
+          moveState.left = false;
+          break;
+        case 'KeyD':
+        case 'ArrowRight':
+          moveState.right = false;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveState.sprint = false;
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    // 5. Toast & Audio Synthesizer (Siêu nhẹ, không cần tải file mp3)
+    const toastEl = document.getElementById('toast');
+    let toastTimer = null;
+    function showToast(msg) {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+    }
+
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSwitchSound() {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(850, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      } catch (e) {}
+    }
+
+    function playDoorSound() {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(120, audioCtx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.18);
+      } catch (e) {}
+    }
+
+    // 6. Indoor Lights System (Đèn các phòng)
+    const indoorLightsGroup = new THREE.Group();
+    scene.add(indoorLightsGroup);
+
+    const lightConfigs = [
+      { name: "Phòng khách",   pos: [5.2, 2.4, -2.0], color: 0xffeedd, intensity: 3.5, dist: 7 },
+      { name: "Bếp & Ăn",      pos: [2.2, 2.4, -2.2], color: 0xfffaea, intensity: 3.0, dist: 6 },
+      { name: "Phòng Master",  pos: [12.0, 2.3, -2.0], color: 0xffe6cb, intensity: 2.8, dist: 6 },
+      { name: "Toilet Master", pos: [12.0, 2.3, -3.4], color: 0xf0f8ff, intensity: 2.2, dist: 5 },
+      { name: "Phòng Twin",    pos: [8.8, 2.3, -3.0], color: 0xffedd5, intensity: 2.8, dist: 6 },
+      { name: "Hành lang",     pos: [8.0, 2.4, -0.8], color: 0xffedd5, intensity: 2.0, dist: 5 },
+      { name: "Toilet Chung",  pos: [7.8, 2.3, -1.8], color: 0xf0f8ff, intensity: 2.2, dist: 5 }
+    ];
+
+    lightConfigs.forEach(cfg => {
+      const pLight = new THREE.PointLight(cfg.color, cfg.intensity, cfg.dist, 1.5);
+      pLight.position.set(...cfg.pos);
+
+      // Bóng đèn phát sáng nhỏ trên trần
+      const bulbGeo = new THREE.SphereGeometry(0.06, 12, 12);
+      const bulbMat = new THREE.MeshBasicMaterial({ color: cfg.color });
+      const bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
+      bulbMesh.position.set(...cfg.pos);
+
+      indoorLightsGroup.add(pLight);
+      indoorLightsGroup.add(bulbMesh);
+    });
+
+    let lightsOn = true;
+    const btnLight = document.getElementById('btn-light');
+
+    function toggleLights() {
+      lightsOn = !lightsOn;
+      indoorLightsGroup.visible = lightsOn;
+      playSwitchSound();
+      if (btnLight) {
+        btnLight.textContent = lightsOn ? '💡 Đèn: BẬT' : '🌑 Đèn: TẮT';
+        btnLight.style.color = lightsOn ? '#facc15' : '#94a3b8';
+      }
+      showToast(lightsOn ? '💡 Đèn trong nhà: Đã BẬT' : '🌑 Đèn trong nhà: Đã TẮT');
+    }
+
+    if (btnLight) {
+      btnLight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLights();
+      });
+    }
+
+    // Day / Night Toggle System
+    let isNight = false;
+    const btnDayNight = document.getElementById('btn-daynight');
+
+    function toggleDayNight() {
+      isNight = !isNight;
+      if (isNight) {
+        scene.background.set(0x080c18);
+        scene.fog.color.set(0x080c18);
+        sunLight.color.set(0x38557a);
+        sunLight.intensity = 0.25;
+        ambientLight.intensity = 0.2;
+        hemiLight.intensity = 0.3;
+        if (!lightsOn) toggleLights(); // Đêm tự bật đèn ấm cúng
+        if (btnDayNight) btnDayNight.textContent = '🌙 Ban đêm';
+        showToast('🌙 Chế độ Ban đêm (Ấm cúng)');
+      } else {
+        scene.background.set(0xdce7f0);
+        scene.fog.color.set(0xdce7f0);
+        sunLight.color.set(0xfff5e6);
+        sunLight.intensity = 1.5;
+        ambientLight.intensity = 0.6;
+        hemiLight.intensity = 1.2;
+        if (btnDayNight) btnDayNight.textContent = '☀️ Ban ngày';
+        showToast('☀️ Chế độ Ban ngày (Sáng sủa)');
+      }
+    }
+
+    if (btnDayNight) {
+      btnDayNight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleDayNight();
+      });
+    }
+
+    // 7. Collision Toggle
+    let collisionEnabled = true;
+    const collidableMeshes = [];
+    const btnCollision = document.getElementById('btn-collision');
+
+    function toggleCollision() {
+      collisionEnabled = !collisionEnabled;
+      if (btnCollision) {
+        btnCollision.textContent = collisionEnabled ? '🧱 Chống xuyên: BẬT' : '👻 Chống xuyên: TẮT';
+        btnCollision.style.color = collisionEnabled ? '#4ade80' : '#f87171';
+      }
+      showToast(collisionEnabled ? '🧱 Chống xuyên: BẬT' : '👻 Chống xuyên: TẮT (Ghost Mode)');
+    }
+
+    if (btnCollision) {
+      btnCollision.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCollision();
+      });
+    }
+
+    // 8. Auto-Opening Doors System
+    const interactiveDoors = [];
+
+    // 9. Load Demohouse GLB
+    const loader = new GLTFLoader();
+    const loadingText = document.getElementById('loading-text');
+    const progressBar = document.getElementById('progress-bar');
+    const loaderScreen = document.getElementById('loader');
+
+    loader.load(
+      'assets/demohouse.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+              child.material.roughness = Math.max(child.material.roughness, 0.2);
+            }
+
+            const name = child.name.toLowerCase();
+
+            // Phát hiện các cánh cửa để tự động đóng/mở khi lại gần
+            if (name.includes('leaf') || name.includes('sash_sliding')) {
+              const isSlide = name.includes('sash_sliding');
+              const worldPos = new THREE.Vector3();
+              child.getWorldPosition(worldPos);
+
+              // Góc quay mở cánh cửa
+              let openRotDelta = Math.PI * 0.45; // ~81 độ
+              if (name.includes('hallway') || name.includes('closet')) {
+                openRotDelta = -Math.PI * 0.45;
+              }
+
+              interactiveDoors.push({
+                mesh: child,
+                name: child.name,
+                type: isSlide ? 'slide' : 'swing',
+                worldPos: worldPos,
+                initialRotY: child.rotation.y,
+                openRotY: child.rotation.y + openRotDelta,
+                initialPosX: child.position.x,
+                openPosX: child.position.x + 0.9,
+                isOpen: false
+              });
+
+              // Cửa ban đầu đóng nên là vật cản va chạm
+              collidableMeshes.push(child);
+              return;
+            }
+
+            // Lọc vật cản va chạm thông thường: loại bỏ sàn, mặt đất, trần, kính cửa
+            const isNonObstacle = name.includes('floor') || 
+                                  name.includes('ground') || 
+                                  name.includes('ceiling') || 
+                                  name.includes('roof') || 
+                                  name.includes('blueprint') || 
+                                  name.includes('plane') ||
+                                  name.includes('glass');
+            if (!isNonObstacle) {
+              collidableMeshes.push(child);
+            }
+          }
+        });
+        scene.add(model);
+        console.log(`Đã nạp xong: ${collidableMeshes.length} vật cản, ${interactiveDoors.length} cánh cửa tương tác.`);
+
+        // Hide loader
+        loaderScreen.classList.add('fade-out');
+        setTimeout(() => loaderScreen.remove(), 600);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+          loadingText.textContent = `Đang tải mô hình Demohouse... (${percent}%)`;
+          progressBar.style.width = `${percent}%`;
+        }
+      },
+      (error) => {
+        console.error('Lỗi khi nạp mô hình:', error);
+        loadingText.textContent = 'Lỗi nạp file GLB. Vui lòng kiểm tra lại!';
+      }
+    );
+
+    // 10. Room Teleport Presets
+    const roomPositions = {
+      entrance: { x: 9.2, y: EYE_HEIGHT, z: -0.4, rotY: 0 },
+      living:   { x: 5.2, y: EYE_HEIGHT, z: -2.0, rotY: -Math.PI / 4 },
+      kitchen:  { x: 2.2, y: EYE_HEIGHT, z: -2.2, rotY: Math.PI / 2 },
+      master:   { x: 12.0, y: EYE_HEIGHT, z: -2.0, rotY: 0 },
+      twin:     { x: 8.8, y: EYE_HEIGHT, z: -3.0, rotY: Math.PI }
+    };
+
+    document.querySelectorAll('.hud-btn[data-room]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roomKey = btn.getAttribute('data-room');
+        const pos = roomPositions[roomKey];
+        if (pos) {
+          camera.position.set(pos.x, pos.y, pos.z);
+          camera.rotation.set(0, pos.rotY, 0);
+          controls.lock();
+          showToast(`Nhảy tới ${btn.textContent}`);
+        }
+      });
+    });
+
+    // Fullscreen Button
+    document.getElementById('btn-fullscreen').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // 11. Collision Detection System (Wall Sliding & Anti-Clipping)
+    const raycaster = new THREE.Raycaster();
+    const PLAYER_RADIUS = 0.35; // Bán kính thân người 35cm
+
+    const collisionDirections = [
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0.7071, 0, 0.7071),
+      new THREE.Vector3(-0.7071, 0, 0.7071),
+      new THREE.Vector3(0.7071, 0, -0.7071),
+      new THREE.Vector3(-0.7071, 0, -0.7071)
+    ];
+
+    function checkPositionCollision(px, pz) {
+      if (!collisionEnabled || collidableMeshes.length === 0) return false;
+
+      const heights = [0.4, 1.1];
+      for (let i = 0; i < heights.length; i++) {
+        const origin = new THREE.Vector3(px, heights[i], pz);
+        for (let j = 0; j < collisionDirections.length; j++) {
+          raycaster.set(origin, collisionDirections[j]);
+          raycaster.far = PLAYER_RADIUS;
+          const hits = raycaster.intersectObjects(collidableMeshes, false);
+          if (hits.length > 0 && hits[0].distance < PLAYER_RADIUS) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // 12. Motion & Interaction Loop
+    const clock = new THREE.Clock();
+    const BOUNDS = {
+      minX: 0.2,
+      maxX: 14.1,
+      minZ: -4.2,
+      maxZ: 0.2
+    };
+
+    const forwardVector = new THREE.Vector3();
+    const rightVector = new THREE.Vector3();
+    const moveDirection = new THREE.Vector3();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min(clock.getDelta(), 0.1);
+
+      // --- CẬP NHẬT CỬA TỰ ĐỘNG ĐÓNG / MỞ KHI LẠI GẦN ---
+      for (let i = 0; i < interactiveDoors.length; i++) {
+        const d = interactiveDoors[i];
+        const dist = Math.hypot(camera.position.x - d.worldPos.x, camera.position.z - d.worldPos.z);
+
+        // Lại gần dưới 1.9m -> Tự động mở cửa & mở đường đi
+        if (dist < 1.9 && !d.isOpen) {
+          d.isOpen = true;
+          playDoorSound();
+          showToast(`🚪 Cửa tự động mở...`);
+
+          // Bỏ va chạm để người chơi bước xuyên qua cửa
+          const idx = collidableMeshes.indexOf(d.mesh);
+          if (idx !== -1) collidableMeshes.splice(idx, 1);
+        }
+        // Đi xa quá 2.6m -> Tự động khép cửa lại & bật lại va chạm
+        else if (dist > 2.6 && d.isOpen) {
+          d.isOpen = false;
+          playDoorSound();
+
+          // Thêm lại vào danh sách va chạm
+          if (collidableMeshes.indexOf(d.mesh) === -1) {
+            collidableMeshes.push(d.mesh);
+          }
+        }
+
+        // Animation mượt mà
+        if (d.type === 'swing') {
+          const targetRot = d.isOpen ? d.openRotY : d.initialRotY;
+          d.mesh.rotation.y = THREE.MathUtils.lerp(d.mesh.rotation.y, targetRot, 0.08);
+        } else if (d.type === 'slide') {
+          const targetX = d.isOpen ? d.openPosX : d.initialPosX;
+          d.mesh.position.x = THREE.MathUtils.lerp(d.mesh.position.x, targetX, 0.08);
+        }
+      }
+
+      // --- CẬP NHẬT DI CHUYỂN NGƯỜI CHƠI ---
+      if (controls.isLocked) {
+        const speed = moveState.sprint ? 5.2 : 3.0;
+
+        camera.getWorldDirection(forwardVector);
+        forwardVector.y = 0;
+        forwardVector.normalize();
+
+        rightVector.crossVectors(forwardVector, camera.up).normalize();
+
+        moveDirection.set(0, 0, 0);
+        if (moveState.forward) moveDirection.add(forwardVector);
+        if (moveState.backward) moveDirection.sub(forwardVector);
+        if (moveState.right) moveDirection.add(rightVector);
+        if (moveState.left) moveDirection.sub(rightVector);
+
+        if (moveDirection.lengthSq() > 0) {
+          moveDirection.normalize();
+          const moveDist = speed * delta;
+          const dx = moveDirection.x * moveDist;
+          const dz = moveDirection.z * moveDist;
+
+          // Wall Sliding
+          const targetX = Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, camera.position.x + dx));
+          const targetZ = Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, camera.position.z + dz));
+
+          if (!checkPositionCollision(targetX, camera.position.z)) {
+            camera.position.x = targetX;
+          }
+          if (!checkPositionCollision(camera.position.x, targetZ)) {
+            camera.position.z = targetZ;
+          }
+        }
+
+        // Cố định tầm mắt 1.65m trên sàn
+        camera.position.y = EYE_HEIGHT;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

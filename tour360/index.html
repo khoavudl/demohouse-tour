@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demohouse 360° Virtual Tour</title>
+
+  <!-- Pannellum CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #000;
+    }
+    #panorama {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Top Brand Bar */
+    #top-bar {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 18px;
+      border-radius: 30px;
+      color: #f8fafc;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    #top-bar h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    #current-room-badge {
+      font-size: 13px;
+      background: rgba(56, 189, 248, 0.2);
+      color: #bae6fd;
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Bottom Navigation Bar */
+    #nav-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 8px 14px;
+      border-radius: 35px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+      max-width: 90vw;
+      overflow-x: auto;
+    }
+    .room-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .room-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: #fff;
+      border-color: #38bdf8;
+    }
+    .room-btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
+      border-color: transparent;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    /* Action Controls (Right side) */
+    #action-controls {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      z-index: 50;
+      display: flex;
+      gap: 8px;
+    }
+    .action-btn {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+    .action-btn:hover {
+      background: #38bdf8;
+      color: #0f172a;
+      transform: scale(1.08);
+    }
+
+    /* Custom Pulsing Hotspot CSS */
+    .custom-hotspot {
+      width: 32px;
+      height: 32px;
+      background: rgba(2, 132, 199, 0.75);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+      position: relative;
+      animation: pulse 1.8s infinite;
+      transition: transform 0.2s;
+    }
+    .custom-hotspot:hover {
+      transform: scale(1.25);
+      background: #0284c7;
+    }
+    .custom-hotspot::after {
+      content: '➤';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 14px;
+    }
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.8);
+      }
+      70% {
+        box-shadow: 0 0 0 14px rgba(56, 189, 248, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+      }
+    }
+
+    /* Hotspot Tooltip Popup */
+    .pnlm-tooltip span {
+      background-color: rgba(15, 23, 42, 0.9) !important;
+      color: #f8fafc !important;
+      font-family: inherit !important;
+      font-size: 13px !important;
+      padding: 6px 12px !important;
+      border-radius: 8px !important;
+      border: 1px solid rgba(56, 189, 248, 0.4) !important;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+    }
+  </style>
+
+  <!-- Pannellum JS -->
+  <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+</head>
+<body>
+
+  <!-- Top Info Bar -->
+  <div id="top-bar">
+    <h1>🏠 Demohouse 360°</h1>
+    <div id="current-room-badge">Phòng khách</div>
+  </div>
+
+  <!-- Right Actions: Auto-rotate, Fullscreen -->
+  <div id="action-controls">
+    <button class="action-btn" id="btn-rotate" title="Bật/Tắt tự động xoay">🔄</button>
+    <button class="action-btn" id="btn-fullscreen" title="Toàn màn hình">⛶</button>
+  </div>
+
+  <!-- Main Panorama Canvas -->
+  <div id="panorama"></div>
+
+  <!-- Bottom Navigation Bar: Quick Room Switcher -->
+  <div id="nav-bar">
+    <button class="room-btn active" data-scene="living">🛋️ Phòng khách</button>
+    <button class="room-btn" data-scene="kitchen">🍳 Bếp & Ăn</button>
+    <button class="room-btn" data-scene="entrance">🚪 Sảnh vào</button>
+    <button class="room-btn" data-scene="master">🛏️ Phòng Master</button>
+    <button class="room-btn" data-scene="twin">🛏️ Phòng Twin</button>
+  </div>
+
+  <script>
+    // Cấu hình Tour 360 với 5 phòng liên kết điểm nhảy Matterport
+    const tourConfig = {
+      default: {
+        firstScene: 'living',
+        author: 'Demohouse 360',
+        sceneFadeDuration: 800,
+        autoLoad: true,
+        compass: false,
+        showZoomCtrl: true,
+        showFullscreenCtrl: false // Dùng nút tùy chỉnh
+      },
+
+      scenes: {
+        // 1. Phòng khách
+        living: {
+          title: "Phòng khách (Living Room)",
+          hfov: 100,
+          pitch: 0,
+          yaw: 0,
+          type: "equirectangular",
+          panorama: "images/living.jpg",
+          hotSpots: [
+            {
+              pitch: -12,
+              yaw: -88,
+              type: "scene",
+              text: "Đi vào Bếp & Bàn ăn",
+              sceneId: "kitchen",
+              cssClass: "custom-hotspot"
+            },
+            {
+              pitch: -8,
+              yaw: 88,
+              type: "scene",
+              text: "Ra Sảnh vào & Phòng ngủ",
+              sceneId: "entrance",
+              cssClass: "custom-hotspot"
+            }
+          ]
+        },
+
+        // 2. Bếp & Bàn ăn
+        kitchen: {
+          title: "Khu Bếp & Bàn ăn (Kitchen)",
+          hfov: 100,
+          pitch: 0,
+          yaw: 0,
+          type: "equirectangular",
+          panorama: "images/kitchen.jpg",
+          hotSpots: [
+            {
+              pitch: -10,
+              yaw: 15,
+              type: "scene",
+              text: "Quay lại Phòng khách",
+              sceneId: "living",
+              cssClass: "custom-hotspot"
+            }
+          ]
+        },
+
+        // 3. Sảnh vào & Cửa chính
+        entrance: {
+          title: "Sảnh vào & Cửa chính (Entrance)",
+          hfov: 100,
+          pitch: 0,
+          yaw: 0,
+          type: "equirectangular",
+          panorama: "images/entrance.jpg",
+          hotSpots: [
+            {
+              pitch: -8,
+              yaw: -95,
+              type: "scene",
+              text: "Vào Phòng khách",
+              sceneId: "living",
+              cssClass: "custom-hotspot"
+            },
+            {
+              pitch: -8,
+              yaw: 90,
+              type: "scene",
+              text: "Vào Phòng ngủ Master",
+              sceneId: "master",
+              cssClass: "custom-hotspot"
+            },
+            {
+              pitch: -5,
+              yaw: 5,
+              type: "scene",
+              text: "Vào Phòng ngủ Twin",
+              sceneId: "twin",
+              cssClass: "custom-hotspot"
+            }
+          ]
+        },
+
+        // 4. Phòng ngủ Master
+        master: {
+          title: "Phòng ngủ Master (Master Bedroom)",
+          hfov: 100,
+          pitch: 0,
+          yaw: 0,
+          type: "equirectangular",
+          panorama: "images/master.jpg",
+          hotSpots: [
+            {
+              pitch: -10,
+              yaw: 5,
+              type: "scene",
+              text: "Ra Sảnh hành lang",
+              sceneId: "entrance",
+              cssClass: "custom-hotspot"
+            }
+          ]
+        },
+
+        // 5. Phòng ngủ Twin
+        twin: {
+          title: "Phòng ngủ Twin (Twin Bedroom)",
+          hfov: 100,
+          pitch: 0,
+          yaw: 0,
+          type: "equirectangular",
+          panorama: "images/twin.jpg",
+          hotSpots: [
+            {
+              pitch: -10,
+              yaw: 175,
+              type: "scene",
+              text: "Ra Sảnh hành lang",
+              sceneId: "entrance",
+              cssClass: "custom-hotspot"
+            }
+          ]
+        }
+      }
+    };
+
+    // Khởi tạo Pannellum Viewer
+    const viewer = pannellum.viewer('panorama', tourConfig);
+
+    const roomNames = {
+      living: "🛋️ Phòng khách",
+      kitchen: "🍳 Bếp & Ăn",
+      entrance: "🚪 Sảnh vào",
+      master: "🛏️ Phòng Master",
+      twin: "🛏️ Phòng Twin"
+    };
+
+    const currentBadge = document.getElementById('current-room-badge');
+    const roomButtons = document.querySelectorAll('.room-btn');
+
+    // Đồng bộ nút nav bar khi chuyển phòng
+    function updateActiveRoom(sceneId) {
+      currentBadge.textContent = roomNames[sceneId] || sceneId;
+      roomButtons.forEach(btn => {
+        if (btn.getAttribute('data-scene') === sceneId) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // Sự kiện khi scene được load
+    viewer.on('load', () => {
+      const activeScene = viewer.getScene();
+      updateActiveRoom(activeScene);
+    });
+
+    // Click nút trên thanh điều hướng phòng
+    roomButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetScene = btn.getAttribute('data-scene');
+        if (targetScene && viewer.getScene() !== targetScene) {
+          viewer.loadScene(targetScene);
+          updateActiveRoom(targetScene);
+        }
+      });
+    });
+
+    // Auto-rotate Toggle Button
+    let isAutoRotating = false;
+    const btnRotate = document.getElementById('btn-rotate');
+    btnRotate.addEventListener('click', () => {
+      isAutoRotating = !isAutoRotating;
+      if (isAutoRotating) {
+        viewer.startAutoRotate(-2); // Xoay nhẹ sang phải
+        btnRotate.style.background = '#38bdf8';
+        btnRotate.style.color = '#0f172a';
+      } else {
+        viewer.stopAutoRotate();
+        btnRotate.style.background = '';
+        btnRotate.style.color = '';
+      }
+    });
+
+    // Fullscreen Toggle Button
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>
