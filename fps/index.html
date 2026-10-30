@@ -156,6 +156,25 @@
       padding: 8px 16px;
       border-radius: 30px;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: 95vw;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 768px) {
+      #hud {
+        bottom: 12px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      .hud-btn {
+        padding: 5px 10px !important;
+        font-size: 11px !important;
+        white-space: nowrap;
+      }
+      .card {
+        padding: 24px 20px !important;
+        max-width: 90vw !important;
+      }
     }
     .hud-btn {
       background: rgba(255, 255, 255, 0.1);
@@ -165,12 +184,83 @@
       border-radius: 20px;
       font-size: 13px;
       cursor: pointer;
+      white-space: nowrap;
       transition: background 0.2s, color 0.2s;
     }
     .hud-btn:hover {
       background: #38bdf8;
       color: #0f172a;
       font-weight: 600;
+    }
+
+    /* Mobile Touch Controls */
+    #touch-controls {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 45;
+    }
+    #joystick-zone {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 50%;
+      height: 75%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #look-zone {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 50%;
+      height: 75%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #joystick-base {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.5);
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      pointer-events: none;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+    #joystick-stick {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #38bdf8 30%, #0284c7 100%);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+      pointer-events: none;
+    }
+    #mobile-menu-btn {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 70;
+      pointer-events: auto;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
     }
 
     /* Loading Screen */
@@ -251,9 +341,10 @@
   <div id="overlay">
     <div class="card">
       <h1>🏠 Khám Phá Ngôi Nhà (Demohouse)</h1>
-      <p>Trải nghiệm góc nhìn thứ nhất (FPS Walkthrough). Nhấp chuột vào nút bên dưới để bắt đầu.</p>
+      <p id="overlay-subtext">Trải nghiệm góc nhìn thứ nhất (FPS Walkthrough). Nhấp chuột vào nút bên dưới để bắt đầu.</p>
       
-      <div class="controls-grid">
+      <!-- Hướng dẫn Desktop -->
+      <div class="controls-grid" id="desktop-controls">
         <div><span class="key">W S A D</span> / <span class="key">Mũi tên</span> : Di chuyển</div>
         <div><span class="key">Chuột</span> : Lắc nhìn 360°</div>
         <div><span class="key">L</span> : Bật / Tắt đèn trong nhà</div>
@@ -264,11 +355,30 @@
         <div><span class="key">ESC</span> : Nhả chuột / Menu</div>
       </div>
 
+      <!-- Hướng dẫn Mobile Touch -->
+      <div class="controls-grid" id="mobile-controls" style="display: none;">
+        <div><span class="key">🕹️ Nửa Trái</span> : Cần gạt di chuyển</div>
+        <div><span class="key">👆 Nửa Phải</span> : Vuốt đổi góc nhìn</div>
+        <div><span class="key">💡 Nút HUD</span> : Bật/tắt đèn & ngày/đêm</div>
+        <div><span class="key">🚪 Cửa</span> : Tự động mở khi lại gần (< 2m)</div>
+      </div>
+
       <button class="btn-start" id="start-btn">Bắt Đầu Trải Nghiệm</button>
     </div>
   </div>
 
   <div id="reticle"></div>
+
+  <!-- Mobile Touch Controls (Joystick & Look Zone) -->
+  <div id="touch-controls" style="display: none;">
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <div id="joystick-stick"></div>
+      </div>
+    </div>
+    <div id="look-zone"></div>
+    <button id="mobile-menu-btn">☰ Menu</button>
+  </div>
 
   <!-- Teleport Room Quick Nav & Interactive HUD -->
   <div id="hud">
@@ -341,22 +451,174 @@
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // 3. Pointer Lock Controls (Lắc chuột nhìn 360 độ quanh trục)
-    const controls = new PointerLockControls(camera, document.body);
-    const overlay = document.getElementById('overlay');
-    const startBtn = document.getElementById('start-btn');
+    // 3. Device Detection & Adaptive Controls (PC vs Mobile)
+    const isTouch = ('ontouchstart' in window) || 
+                    (navigator.maxTouchPoints > 0) || 
+                    window.matchMedia('(pointer: coarse)').matches;
 
-    startBtn.addEventListener('click', () => {
-      controls.lock();
+    const desktopControlsDiv = document.getElementById('desktop-controls');
+    const mobileControlsDiv = document.getElementById('mobile-controls');
+    const overlaySubtext = document.getElementById('overlay-subtext');
+    const startBtn = document.getElementById('start-btn');
+    const reticle = document.getElementById('reticle');
+    const touchControls = document.getElementById('touch-controls');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const overlay = document.getElementById('overlay');
+
+    const controls = new PointerLockControls(camera, document.body);
+
+    if (isTouch) {
+      if (desktopControlsDiv) desktopControlsDiv.style.display = 'none';
+      if (mobileControlsDiv) mobileControlsDiv.style.display = 'grid';
+      if (overlaySubtext) overlaySubtext.textContent = 'Trải nghiệm 3D trên màn hình cảm ứng. Chạm vào nút bên dưới để bắt đầu.';
+      if (startBtn) startBtn.textContent = 'Chạm Để Bắt Đầu Khám Phá';
+      if (reticle) reticle.style.display = 'none';
+    }
+
+    startBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initAudio();
+
+      if (isTouch) {
+        overlay.classList.add('hidden');
+        if (touchControls) touchControls.style.display = 'block';
+        showToast('🕹️ Nửa trái: Cần gạt đi lại • Nửa phải: Vuốt nhìn 360°');
+      } else {
+        controls.lock();
+      }
     });
+
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        overlay.classList.remove('hidden');
+        if (touchControls) touchControls.style.display = 'none';
+      });
+    }
 
     controls.addEventListener('lock', () => {
       overlay.classList.add('hidden');
     });
 
     controls.addEventListener('unlock', () => {
-      overlay.classList.remove('hidden');
+      if (!isTouch) {
+        overlay.classList.remove('hidden');
+      }
     });
+
+    // --- VIRTUAL JOYSTICK & TOUCH LOOK SYSTEM ---
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickBase = document.getElementById('joystick-base');
+    const joystickStick = document.getElementById('joystick-stick');
+    const lookZone = document.getElementById('look-zone');
+
+    let joystickTouchId = null;
+    let baseCenter = { x: 0, y: 0 };
+    const joystickVector = new THREE.Vector2(0, 0);
+    const MAX_JOYSTICK_RADIUS = 46;
+
+    if (joystickZone) {
+      joystickZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (joystickTouchId !== null) return;
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        baseCenter.x = touch.clientX;
+        baseCenter.y = touch.clientY;
+
+        joystickBase.style.left = `${baseCenter.x}px`;
+        joystickBase.style.top = `${baseCenter.y}px`;
+        joystickStick.style.transform = 'translate(-50%, -50%)';
+        joystickBase.style.opacity = '1';
+        joystickVector.set(0, 0);
+      }, { passive: false });
+
+      joystickZone.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === joystickTouchId) {
+            const dx = touch.clientX - baseCenter.x;
+            const dy = touch.clientY - baseCenter.y;
+            const dist = Math.hypot(dx, dy);
+            const clampedDist = Math.min(dist, MAX_JOYSTICK_RADIUS);
+            const angle = Math.atan2(dy, dx);
+            const stickX = Math.cos(angle) * clampedDist;
+            const stickY = Math.sin(angle) * clampedDist;
+
+            joystickStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+            joystickVector.x = stickX / MAX_JOYSTICK_RADIUS;
+            joystickVector.y = stickY / MAX_JOYSTICK_RADIUS;
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const onJoystickEnd = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joystickTouchId) {
+            joystickTouchId = null;
+            joystickVector.set(0, 0);
+            joystickBase.style.opacity = '0';
+            joystickStick.style.transform = 'translate(-50%, -50%)';
+            break;
+          }
+        }
+      };
+
+      joystickZone.addEventListener('touchend', onJoystickEnd);
+      joystickZone.addEventListener('touchcancel', onJoystickEnd);
+    }
+
+    // Touch Look (Right side)
+    let lookTouchId = null;
+    let lastLookX = 0;
+    let lastLookY = 0;
+    const cameraEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+    if (lookZone) {
+      lookZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (lookTouchId !== null) return;
+        const touch = e.changedTouches[0];
+        lookTouchId = touch.identifier;
+        lastLookX = touch.clientX;
+        lastLookY = touch.clientY;
+      }, { passive: false });
+
+      lookZone.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === lookTouchId) {
+            const deltaX = touch.clientX - lastLookX;
+            const deltaY = touch.clientY - lastLookY;
+            lastLookX = touch.clientX;
+            lastLookY = touch.clientY;
+
+            // Xoay góc nhìn camera mượt mà
+            cameraEuler.setFromQuaternion(camera.quaternion);
+            cameraEuler.y -= deltaX * 0.0038;
+            cameraEuler.x -= deltaY * 0.0035;
+            cameraEuler.x = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, cameraEuler.x));
+            camera.quaternion.setFromEuler(cameraEuler);
+            break;
+          }
+        }
+      }, { passive: false });
+
+      const onLookEnd = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === lookTouchId) {
+            lookTouchId = null;
+            break;
+          }
+        }
+      };
+
+      lookZone.addEventListener('touchend', onLookEnd);
+      lookZone.addEventListener('touchcancel', onLookEnd);
+    }
 
     // 4. Keyboard Movement (WASD + Mũi tên)
     const moveState = {
@@ -790,29 +1052,48 @@
         }
       }
 
-      // --- CẬP NHẬT DI CHUYỂN NGƯỜI CHƠI ---
-      if (controls.isLocked) {
-        const speed = moveState.sprint ? 5.2 : 3.0;
+      // --- CẬP NHẬT DI CHUYỂN NGƯỜI CHƠI (HỖ TRỢ CẢ PC & MOBILE) ---
+      const isExploring = controls.isLocked || (isTouch && overlay.classList.contains('hidden'));
 
-        camera.getWorldDirection(forwardVector);
-        forwardVector.y = 0;
-        forwardVector.normalize();
+      if (isExploring) {
+        let inputZ = 0;
+        let inputX = 0;
+        let isSprint = moveState.sprint;
 
-        rightVector.crossVectors(forwardVector, camera.up).normalize();
+        if (controls.isLocked) {
+          // Bàn phím Desktop (WASD / Mũi tên)
+          inputZ = Number(moveState.forward) - Number(moveState.backward);
+          inputX = Number(moveState.right) - Number(moveState.left);
+        } else if (isTouch) {
+          // Cần gạt Joystick Mobile: Y âm là đẩy tới, Y dương là lùi
+          inputZ = -joystickVector.y;
+          inputX = joystickVector.x;
+          if (joystickVector.length() > 0.85) {
+            isSprint = true;
+          }
+        }
 
-        moveDirection.set(0, 0, 0);
-        if (moveState.forward) moveDirection.add(forwardVector);
-        if (moveState.backward) moveDirection.sub(forwardVector);
-        if (moveState.right) moveDirection.add(rightVector);
-        if (moveState.left) moveDirection.sub(rightVector);
+        const inputMag = Math.hypot(inputX, inputZ);
 
-        if (moveDirection.lengthSq() > 0) {
+        if (inputMag > 0.08) {
+          const speed = isSprint ? 5.2 : 3.0;
+
+          camera.getWorldDirection(forwardVector);
+          forwardVector.y = 0;
+          forwardVector.normalize();
+
+          rightVector.crossVectors(forwardVector, camera.up).normalize();
+
+          moveDirection.set(0, 0, 0);
+          moveDirection.addScaledVector(forwardVector, inputZ);
+          moveDirection.addScaledVector(rightVector, inputX);
           moveDirection.normalize();
-          const moveDist = speed * delta;
+
+          const moveDist = speed * delta * Math.min(1.0, inputMag);
           const dx = moveDirection.x * moveDist;
           const dz = moveDirection.z * moveDist;
 
-          // Wall Sliding
+          // Wall Sliding & Chống xuyên tường
           const targetX = Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, camera.position.x + dx));
           const targetZ = Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, camera.position.z + dz));
 
